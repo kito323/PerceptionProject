@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import imutils
 
 images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
+
 map1x = np.loadtxt('data/map1x.csv', delimiter = "\t").astype("float32")
 map1y = np.loadtxt('data/map1y.csv', delimiter = "\t").astype("float32")
 

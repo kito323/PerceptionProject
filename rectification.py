@@ -3,6 +3,7 @@
 Created on Sun Apr 11 16:23:45 2021
 
 @author: krist
+#https://sourishghosh.com/2016/stereo-calibration-cpp-opencv/
 """
 import numpy as np
 import cv2
@@ -19,6 +20,7 @@ nb_vertical = 9
 # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
 objp = np.zeros((nb_horizontal*nb_vertical,3), np.float32)
 objp[:,:2] = np.mgrid[0:nb_vertical,0:nb_horizontal].T.reshape(-1,2)
+objp = objp*33.6 #multiplying with the actual size of the checker board square
 
 # Arrays to store object points and image points from all the images.
 objpoints1 = [] 
