@@ -27,11 +27,11 @@ mtx_left = np.array([[705.127,	0,	621.042],
                      [0,	0,	1]])
 
 
-#images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
-#images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
+images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
+images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
 
-images_left = glob.glob('data/imgs//withOcclusions/left/*.png')
-images_right = glob.glob('data/imgs//withOcclusions/right/*.png')
+#images_left = glob.glob('data/imgs//withOcclusions/left/*.png')
+#images_right = glob.glob('data/imgs//withOcclusions/right/*.png')
 
 map1x = np.loadtxt('data/map1x.csv', delimiter = "\t").astype("float32")
 map1y = np.loadtxt('data/map1y.csv', delimiter = "\t").astype("float32")
@@ -172,7 +172,7 @@ for i in range(1, len(images_left)):
     
     
     #new object has been placed at the beginning of the treadmill
-    if w>0 and x > 600 and x < 1100 and state == 0:
+    if w>0 and x+w > 600 and x+w < 1200 and state == 0:
         state = 1
         X = np.array([[0], #x position
               [0], #x velocity
@@ -193,7 +193,7 @@ for i in range(1, len(images_left)):
     elif state == 1:
         
         #the object reached the end of the treadmill start waiting for the new one
-        if w > 0 and x<600:
+        if w > 0 and x+w<600:
             state = 0
             
         #if rectangle is found get the measurement for Kalman and do update and predict
