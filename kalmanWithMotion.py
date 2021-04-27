@@ -27,8 +27,11 @@ mtx_left = np.array([[705.127,	0,	621.042],
                      [0,	0,	1]])
 
 
-images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
-images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
+#images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
+#images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
+
+images_left = glob.glob('data/imgs//withOcclusions/left/*.png')
+images_right = glob.glob('data/imgs//withOcclusions/right/*.png')
 
 map1x = np.loadtxt('data/map1x.csv', delimiter = "\t").astype("float32")
 map1y = np.loadtxt('data/map1y.csv', delimiter = "\t").astype("float32")
@@ -102,8 +105,6 @@ def predict(x, P, F, u):
     P_next = np.linalg.multi_dot([F, P, np.transpose(F)])
     return X_next, P_next
 
-kernel = np.ones((9,9),np.uint8)
-
 ### Initialize Kalman filter ###
 # The initial state (6x1).
 X = np.array([[0], #x position
@@ -151,8 +152,6 @@ I = np.array([[1, 0, 0, 0, 0, 0],
               [0, 0, 0, 1, 0, 0],
               [0, 0, 0, 0, 1, 0],
               [0, 0, 0, 0, 0, 1]])
-
-
 
 
 state = 0

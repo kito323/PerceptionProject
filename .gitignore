@@ -1,4 +1,6 @@
 data/imgs/withoutOcclusions/left
 data/imgs/withoutOcclusions/right
+data/imgs/withOcclusions/left
+data/imgs/withOcclusions/right
 data/imgs/calibration/Stereo_calibration_images
 *.ipynb_checkpoints

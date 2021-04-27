@@ -12,14 +12,23 @@ import imutils
 import open3d as o3d
 import copy
 
-images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
-images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
+#images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
+#images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
+
+images_left = glob.glob('data/imgs//withOcclusions/left/*.png')
+images_right = glob.glob('data/imgs//withOcclusions/right/*.png')
 
 map1x = np.loadtxt('data/map1x.csv', delimiter = "\t").astype("float32")
 map1y = np.loadtxt('data/map1y.csv', delimiter = "\t").astype("float32")
 
 map2x = np.loadtxt('data/map2x.csv', delimiter = "\t").astype("float32")
 map2y = np.loadtxt('data/map2y.csv', delimiter = "\t").astype("float32")
+
+
+mtx_left = np.array([[705.127,	0,	621.042],
+                     [0,	705.055,	370.571],
+                     [0,	0,	1]])
+
 
 Q = np.array([[1, 0, 0, -646.284], 
               [0, 1, 0, -384.277],
@@ -78,7 +87,7 @@ def featureDetection(grayU1_prev, grayU1, feat1, x, y, w, h, draw=""):
         
     return feat1, feat2, pic, good_new
 
-def to3D(grayU1, grayU2):
+def to3D(grayU1, grayU2, good_new):
     stereo = cv2.StereoBM_create(numDisparities=208, blockSize=7)
     stereo.setMinDisparity(0)
     stereo.setUniquenessRatio(4)
@@ -87,10 +96,76 @@ def to3D(grayU1, grayU2):
     stereo.setSpeckleWindowSize(147)
     stereo.setDisp12MaxDiff(1)
     disparity = stereo.compute(grayU1, grayU2)
+    
     disparity2 = cv2.normalize(disparity, None, 255, 0, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-    points_3D = cv2.reprojectImageTo3D(disparity, Q)
-    return points_3D, disparity2
+    vector = np.array([[[good_new[0][0],
+                        good_new[0][1], 
+                        disparity[int(good_new[0][1])][int(good_new[0][0])]]]])
+    
+    point_3D = cv2.perspectiveTransform(vector, Q)
+    return point_3D, disparity2
 
+def update(x, P, Z, H, R):
+    Y = Z-(np.dot(H,x))
+    S =  (np.linalg.multi_dot([H, P, np.transpose(H)]))+R
+    K = np.linalg.multi_dot([P, np.transpose(H), np.linalg.pinv(S)])
+    X_next = x+np.dot(K,Y)
+    P_next = np.dot((I-np.dot(K,H)),P)
+    return X_next, P_next
+    
+
+def predict(x, P, F, u):
+    X_next = (np.dot(F,x))+u
+    P_next = np.linalg.multi_dot([F, P, np.transpose(F)])
+    return X_next, P_next
+
+### Initialize Kalman filter ###
+# The initial state (6x1).
+X = np.array([[0.0], #x position
+              [0.0], #x velocity
+              [0.0], #y position
+              [0.0], #y velocity
+              [0.0], #z position
+              [0.0]]) #z velocity
+
+# The initial uncertainty (6x6).
+P = np.array([[1000000, 0, 0, 0, 0, 0],
+              [0, 1000000, 0, 0, 0, 0],
+              [0, 0, 1000000, 0, 0, 0],
+              [0, 0, 0, 1000000, 0, 0],
+              [0, 0, 0, 0, 1000000, 0],
+              [0, 0, 0, 0, 0, 1000000]])
+
+# The external motion (6x1).
+u = np.array([[0], 
+              [0], 
+              [0],
+              [0], 
+              [0], 
+              [0]])
+
+# The transition matrix (6x6). 
+F = np.array([[1, 1, 0, 0, 0, 0],
+              [0, 1, 0, 0, 0, 0],
+              [0, 0, 1, 1, 0, 0],
+              [0, 0, 0, 1, 0, 0],
+              [0, 0, 0, 0, 1, 1],
+              [0, 0, 0, 0, 0, 1]])
+
+# The observation matrix (2x6).
+H = np.array([[1, 0, 0, 0, 0, 0],
+              [0, 0, 1, 0, 0, 0],
+              [0, 0, 0, 0, 1, 0]])
+
+# The measurement uncertainty.
+R = 1
+
+I = np.array([[1, 0, 0, 0, 0, 0],
+              [0, 1, 0, 0, 0, 0],
+              [0, 0, 1, 0, 0, 0],
+              [0, 0, 0, 1, 0, 0],
+              [0, 0, 0, 0, 1, 0],
+              [0, 0, 0, 0, 0, 1]])
 
 state = 0
 
@@ -120,14 +195,42 @@ for i in range(1, len(images_left)):
         feat1 = feat1 + np.array([x,y]).astype('float32')
         state = 1
         
+        X = np.array([[0.0], #x position
+              [0.0], #x velocity
+              [0.0], #y position
+              [0.0], #y velocity
+              [0.0], #z position
+              [0.0]]) #z velocity
+
+        # The initial uncertainty (6x6).
+        P = np.array([[1000000, 0, 0, 0, 0, 0],
+              [0, 1000000, 0, 0, 0, 0],
+              [0, 0, 1000000, 0, 0, 0],
+              [0, 0, 0, 1000000, 0, 0],
+              [0, 0, 0, 0, 1000000, 0],
+              [0, 0, 0, 0, 0, 1000000]])
+        
     elif state == 1:
         if w > 0 and x<600:
             state = 0
         elif w > 0:
-            feat1, feat2, pic, good_new = featureDetection(grayU1_prev, grayU1, feat1, x, y, w, h, "draw") 
-            points_3D, disparity2 = to3D(grayU1, grayU2)
+            feat1, feat2, pic, good_new = featureDetection(grayU1_prev, grayU1, feat1, x, y, w, h, "") 
+            point_3D, disparity2 = to3D(grayU1, grayU2, good_new)
+            Z = point_3D.reshape(3,1) 
+            
+            #drawing the measurement
+            measurement_2D, _ = cv2.projectPoints(np.array([[Z[0][0], Z[1][0], Z[2][0]]]), np.zeros(3), np.array([0., 0., 0.]), mtx_left, np.array([0., 0., 0., 0.]))
+            cv2.circle(pic, (int(measurement_2D[0][0][0]), int(measurement_2D[0][0][1])), 5, (0, 0, 255), -1)
+            
+            
+            X, P = update(X, P, Z, H, R)
             feat1 = good_new.reshape(-1,1,2)
         
+        X, P = predict(X, P, F, u)
+        
+        #drawing the prediction
+        point_2D, _ = cv2.projectPoints(np.array([[X[0][0], X[2][0], X[4][0]]]), np.zeros(3), np.array([0., 0., 0.]), mtx_left,  np.array([0., 0., 0., 0.]))
+        cv2.circle(pic, (int(point_2D[0][0][0]), int(point_2D[0][0][1])), 5, (255, 0, 0), -1)
         
     #show result
     cv2.rectangle(pic, (x, y), (x + w, y + h), (0, 255, 0), 2)
