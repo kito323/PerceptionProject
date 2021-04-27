@@ -10,6 +10,7 @@ import cv2
 import glob
 import matplotlib.pyplot as plt
 
+
 """
 Implement the number of vertical and horizontal corners
 """
