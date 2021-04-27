@@ -12,11 +12,13 @@ import imutils
 import open3d as o3d
 import copy
 
-#images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
-#images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
+#the unoccluded images
+images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
+images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
 
-images_left = glob.glob('data/imgs//withOcclusions/left/*.png')
-images_right = glob.glob('data/imgs//withOcclusions/right/*.png')
+#the occluded images
+#images_left = glob.glob('data/imgs//withOcclusions/left/*.png')
+#images_right = glob.glob('data/imgs//withOcclusions/right/*.png')
 
 map1x = np.loadtxt('data/map1x.csv', delimiter = "\t").astype("float32")
 map1y = np.loadtxt('data/map1y.csv', delimiter = "\t").astype("float32")
@@ -57,15 +59,15 @@ def motionDetection(img):
     
     cnts = cv2.findContours(fgmask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
-    x,y,w,h = 0,0,0,0
+    x,y,w,h,c = 0,0,0,0,[]
 
     #Draw only the biggest contour if its size is over threshold
     if len(cnts) != 0:
-        c = max(cnts, key = cv2.contourArea)
-        if cv2.contourArea(c) > 4000 and cv2.contourArea(c) < 35000 :
-            (x, y, w, h) = cv2.boundingRect(c)
-            #cv2.rectangle(imgU1, (x, y), (x + w, y + h), (0, 255, 0), 2)
-    return x,y,w,h
+        cnt = max(cnts, key = cv2.contourArea)
+        if cv2.contourArea(cnt) > 4000 and cv2.contourArea(cnt) < 35000 :
+            (x, y, w, h) = cv2.boundingRect(cnt)
+            c = [cnt]
+    return x,y,w,h,c
 
 def featureDetection(grayU1_prev, grayU1, feat1, x, y, w, h, draw=""):
     lk_params = dict( winSize  = (15,15), maxLevel = 2, criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
@@ -98,9 +100,9 @@ def to3D(grayU1, grayU2, good_new):
     disparity = stereo.compute(grayU1, grayU2)
     
     disparity2 = cv2.normalize(disparity, None, 255, 0, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-    vector = np.array([[[good_new[0][0],
-                        good_new[0][1], 
-                        disparity[int(good_new[0][1])][int(good_new[0][0])]]]])
+    vector = np.array([[[good_new[3][0],
+                        good_new[3][1], 
+                        disparity[int(good_new[3][1])][int(good_new[3][0])]]]])
     
     point_3D = cv2.perspectiveTransform(vector, Q)
     return point_3D, disparity2
@@ -187,10 +189,10 @@ for i in range(1, len(images_left)):
     pic = copy.deepcopy(imgU1)
     
     #motion detection on left image (returns the centre and width and height of the surrounding rect)
-    x,y,w,h = motionDetection(imgU1)
+    x,y,w,h,c = motionDetection(imgU1)
     
     #detecting the first features at  the beginning of the treadmill
-    if w>0 and x > 600 and x < 1100 and state == 0:
+    if w>0 and x+w > 600 and x+w < 1200 and state == 0:
         feat1 = cv2.goodFeaturesToTrack(grayU1_prev[y:y+h-1, x:x+w-1], maxCorners=50, qualityLevel=0.04, minDistance=3)
         feat1 = feat1 + np.array([x,y]).astype('float32')
         state = 1
@@ -211,10 +213,10 @@ for i in range(1, len(images_left)):
               [0, 0, 0, 0, 0, 1000000]])
         
     elif state == 1:
-        if w > 0 and x<600:
+        if w > 0 and x+w <600:
             state = 0
         elif w > 0:
-            feat1, feat2, pic, good_new = featureDetection(grayU1_prev, grayU1, feat1, x, y, w, h, "") 
+            feat1, feat2, pic, good_new = featureDetection(grayU1_prev, grayU1, feat1, x, y, w, h, "draw") 
             point_3D, disparity2 = to3D(grayU1, grayU2, good_new)
             Z = point_3D.reshape(3,1) 
             
@@ -233,7 +235,8 @@ for i in range(1, len(images_left)):
         cv2.circle(pic, (int(point_2D[0][0][0]), int(point_2D[0][0][1])), 5, (255, 0, 0), -1)
         
     #show result
-    cv2.rectangle(pic, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    if c != []:
+        cv2.rectangle(pic, (x, y), (x + w, y + h), (0, 255, 0), 2)
     cv2.imshow("Video", pic)
     imgU1_prev = imgU1
     
