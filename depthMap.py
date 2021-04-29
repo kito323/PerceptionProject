@@ -127,10 +127,10 @@ gray1 = cv2.cvtColor(imgU1, cv2.COLOR_BGR2GRAY)
 gray2 = cv2.cvtColor(imgU2, cv2.COLOR_BGR2GRAY)
 
 
-disparity, values = dispTrackbar(gray1, gray2, "BM" ,[0, 1, 12, 4, 253, 157, 147, 1])
-print(values)
-#disparity, values = dispTrackbar(imgU1, imgU2, "SGBM" ,[0, 1, 12, 4, 253, 157, 147, 1])
+#disparity, values = dispTrackbar(gray1, gray2, "BM" ,[0, 1, 12, 4, 253, 157, 147, 1])
 #print(values)
+disparity, values = dispTrackbar(imgU1, imgU2, "SGBM" ,[0, 1, 12, 4, 253, 157, 147, 1])
+print(values)
 
 #%%
 

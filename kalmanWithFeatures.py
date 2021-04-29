@@ -40,7 +40,7 @@ Q = np.array([[1, 0, 0, -646.284],
 fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows = False)
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
 
-def readAndRectify():
+def readAndRectify(i):
     #read in 
     img_left = cv2.imread(images_left[i])
     img_right = cv2.imread(images_right[i])
@@ -64,7 +64,7 @@ def motionDetection(img):
     #Draw only the biggest contour if its size is over threshold
     if len(cnts) != 0:
         cnt = max(cnts, key = cv2.contourArea)
-        if cv2.contourArea(cnt) > 4000 and cv2.contourArea(cnt) < 35000 :
+        if cv2.contourArea(cnt) > 4000:
             (x, y, w, h) = cv2.boundingRect(cnt)
             c = [cnt]
     return x,y,w,h,c
@@ -85,7 +85,7 @@ def featureDetection(grayU1_prev, grayU1, feat1, x, y, w, h, draw=""):
                 #Check if the absolute value of the difference of the coordinates in 2 pictures is more than 10 pixels
                 if (abs(good_new[i][0]-good_old[i][0])>1 or abs(good_new[i][1]-good_old[i][1])>1):
                     cv2.line(pic, (int(good_old[i][0]), int(good_old[i][1])), (int(good_new[i][0]), int(good_new[i][1])), (0, 255, 0), 2)
-                    cv2.circle(pic, (int(good_old[i][0]), int(good_old[i][1])), 5, (0, 255, 0), -1)
+                    cv2.circle(pic, (int(good_new[i][0]), int(good_new[i][1])), 5, (0, 255, 0), -1)
         
     return feat1, feat2, pic, good_new
 
@@ -179,7 +179,7 @@ imgU1_prev = cv2.remap(img_left, map1x, map1y, cv2.INTER_LINEAR, imgU1_prev, cv2
 for i in range(1, len(images_left)):
     
     #read in and rectify two images (U1 = left and U2 = right)
-    imgU1, imgU2 = readAndRectify()
+    imgU1, imgU2 = readAndRectify(i)
     
     #convert all the 3 images to gray for goodfeatures and disparity
     grayU1 = cv2.cvtColor(imgU1, cv2.COLOR_BGR2GRAY)
@@ -192,7 +192,7 @@ for i in range(1, len(images_left)):
     x,y,w,h,c = motionDetection(imgU1)
     
     #detecting the first features at  the beginning of the treadmill
-    if w>0 and x+w > 600 and x+w < 1200 and state == 0:
+    if w>0 and x+w > 700 and x+w < 1200 and state == 0:
         feat1 = cv2.goodFeaturesToTrack(grayU1_prev[y:y+h-1, x:x+w-1], maxCorners=50, qualityLevel=0.04, minDistance=3)
         feat1 = feat1 + np.array([x,y]).astype('float32')
         state = 1
@@ -205,15 +205,15 @@ for i in range(1, len(images_left)):
               [0.0]]) #z velocity
 
         # The initial uncertainty (6x6).
-        P = np.array([[1000000, 0, 0, 0, 0, 0],
-              [0, 1000000, 0, 0, 0, 0],
-              [0, 0, 1000000, 0, 0, 0],
-              [0, 0, 0, 1000000, 0, 0],
-              [0, 0, 0, 0, 1000000, 0],
-              [0, 0, 0, 0, 0, 1000000]])
+        P = np.array([[1000000000, 0, 0, 0, 0, 0],
+                      [0, 1000000000, 0, 0, 0, 0],
+                      [0, 0, 1000000000, 0, 0, 0],
+                      [0, 0, 0, 1000000000, 0, 0],
+                      [0, 0, 0, 0, 1000000000, 0],
+                      [0, 0, 0, 0, 0, 1000000000]])
         
     elif state == 1:
-        if w > 0 and x+w <600:
+        if w > 0 and x+w <700:
             state = 0
         elif w > 0:
             feat1, feat2, pic, good_new = featureDetection(grayU1_prev, grayU1, feat1, x, y, w, h, "draw") 
@@ -223,8 +223,15 @@ for i in range(1, len(images_left)):
             #drawing the measurement
             measurement_2D, _ = cv2.projectPoints(np.array([[Z[0][0], Z[1][0], Z[2][0]]]), np.zeros(3), np.array([0., 0., 0.]), mtx_left, np.array([0., 0., 0., 0.]))
             cv2.circle(pic, (int(measurement_2D[0][0][0]), int(measurement_2D[0][0][1])), 5, (0, 0, 255), -1)
+            cv2.circle(pic, (int(good_new[3][0]), int(good_new[3][1])), 5, (255, 255, 255), -1)
+            cv2.circle(disparity2, (int(good_new[3][0]), int(good_new[3][1])), 7, (255, 255, 255), 1)
+            #cv2.circle(disparity2, (int(measurement_2D[0][0][0]), int(measurement_2D[0][0][1])), 5, (255, 255, 255), -1)
+            cv2.imshow("Disparity", disparity2)
             
-            
+            print(H.dot(X)[0][0], Z[0][0])
+            print(H.dot(X)[1][0], Z[1][0])
+            print(H.dot(X)[2][0], Z[2][0])
+            print()
             X, P = update(X, P, Z, H, R)
             feat1 = good_new.reshape(-1,1,2)
         
@@ -232,14 +239,14 @@ for i in range(1, len(images_left)):
         
         #drawing the prediction
         point_2D, _ = cv2.projectPoints(np.array([[X[0][0], X[2][0], X[4][0]]]), np.zeros(3), np.array([0., 0., 0.]), mtx_left,  np.array([0., 0., 0., 0.]))
-        cv2.circle(pic, (int(point_2D[0][0][0]), int(point_2D[0][0][1])), 5, (255, 0, 0), -1)
-        
+        cv2.circle(pic, (int(point_2D[0][0][0]), int(point_2D[0][0][1])), 5, (0, 0, 0), -1)
+      
     #show result
     if c != []:
         cv2.rectangle(pic, (x, y), (x + w, y + h), (0, 255, 0), 2)
     cv2.imshow("Video", pic)
-    imgU1_prev = imgU1
     
+    imgU1_prev = imgU1
     key = cv2.waitKey(1) & 0xFF
     if key == ord("q"):
         break
