@@ -107,6 +107,28 @@ def to3D(grayU1, grayU2, good_new):
     point_3D = cv2.perspectiveTransform(vector, Q)
     return point_3D, disparity2
 
+def to3D_test(grayU1, grayU2, good_new):
+    win_size = 5
+    stereo = cv2.StereoSGBM_create(minDisparity= 0,
+                                   numDisparities = 16*(12+1),
+                                   blockSize = 7,
+                                   uniquenessRatio = 4,
+                                   speckleWindowSize = 157,
+                                   speckleRange = 147,
+                                   disp12MaxDiff = 1,
+                                   P1 = 8*3*win_size**2,
+                                   P2 =32*3*win_size**2)
+    
+    disparity = stereo.compute(grayU1, grayU2)
+    
+    disparity2 = cv2.normalize(disparity, None, 255, 0, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    vector = np.array([[[good_new[3][0],
+                        good_new[3][1], 
+                        disparity[int(good_new[3][1])][int(good_new[3][0])]]]])
+    
+    point_3D = cv2.perspectiveTransform(vector, Q)
+    return point_3D, disparity2
+
 def update(x, P, Z, H, R):
     Y = Z-(np.dot(H,x))
     S =  (np.linalg.multi_dot([H, P, np.transpose(H)]))+R
@@ -192,25 +214,25 @@ for i in range(1, len(images_left)):
     x,y,w,h,c = motionDetection(imgU1)
     
     #detecting the first features at  the beginning of the treadmill
-    if w>0 and x+w > 700 and x+w < 1200 and state == 0:
+    if w>0 and x+w > 700 and x+w < 1230 and state == 0:
         feat1 = cv2.goodFeaturesToTrack(grayU1_prev[y:y+h-1, x:x+w-1], maxCorners=50, qualityLevel=0.04, minDistance=3)
         feat1 = feat1 + np.array([x,y]).astype('float32')
         state = 1
         
         X = np.array([[0.0], #x position
-              [0.0], #x velocity
-              [0.0], #y position
-              [0.0], #y velocity
-              [0.0], #z position
-              [0.0]]) #z velocity
+                      [0.0], #x velocity
+                      [0.0], #y position
+                      [0.0], #y velocity
+                      [0.0], #z position
+                      [0.0]]) #z velocity
 
         # The initial uncertainty (6x6).
-        P = np.array([[1000000000, 0, 0, 0, 0, 0],
-                      [0, 1000000000, 0, 0, 0, 0],
-                      [0, 0, 1000000000, 0, 0, 0],
-                      [0, 0, 0, 1000000000, 0, 0],
-                      [0, 0, 0, 0, 1000000000, 0],
-                      [0, 0, 0, 0, 0, 1000000000]])
+        P = np.array([[1000000, 0, 0, 0, 0, 0],
+                      [0, 1000000, 0, 0, 0, 0],
+                      [0, 0, 1000000, 0, 0, 0],
+                      [0, 0, 0, 1000000, 0, 0],
+                      [0, 0, 0, 0, 1000000, 0],
+                      [0, 0, 0, 0, 0, 1000000]])
         
     elif state == 1:
         if w > 0 and x+w <700:
@@ -218,21 +240,24 @@ for i in range(1, len(images_left)):
         elif w > 0:
             feat1, feat2, pic, good_new = featureDetection(grayU1_prev, grayU1, feat1, x, y, w, h, "draw") 
             point_3D, disparity2 = to3D(grayU1, grayU2, good_new)
-            Z = point_3D.reshape(3,1) 
             
-            #drawing the measurement
-            measurement_2D, _ = cv2.projectPoints(np.array([[Z[0][0], Z[1][0], Z[2][0]]]), np.zeros(3), np.array([0., 0., 0.]), mtx_left, np.array([0., 0., 0., 0.]))
-            cv2.circle(pic, (int(measurement_2D[0][0][0]), int(measurement_2D[0][0][1])), 5, (0, 0, 255), -1)
-            cv2.circle(pic, (int(good_new[3][0]), int(good_new[3][1])), 5, (255, 255, 255), -1)
-            cv2.circle(disparity2, (int(good_new[3][0]), int(good_new[3][1])), 7, (255, 255, 255), 1)
-            #cv2.circle(disparity2, (int(measurement_2D[0][0][0]), int(measurement_2D[0][0][1])), 5, (255, 255, 255), -1)
-            cv2.imshow("Disparity", disparity2)
+            #if we dont have a valid disparity value don't do othe measuremnt update
+            if (disparity2[int(good_new[3][1])][int(good_new[3][0])] != 0):
+                
+                Z = point_3D.reshape(3,1) 
             
-            print(H.dot(X)[0][0], Z[0][0])
-            print(H.dot(X)[1][0], Z[1][0])
-            print(H.dot(X)[2][0], Z[2][0])
-            print()
-            X, P = update(X, P, Z, H, R)
+                #drawing the measurement
+                measurement_2D, _ = cv2.projectPoints(np.array([[Z[0][0], Z[1][0], Z[2][0]]]), np.zeros(3), np.array([0., 0., 0.]), mtx_left, np.array([0., 0., 0., 0.]))
+                cv2.circle(pic, (int(measurement_2D[0][0][0]), int(measurement_2D[0][0][1])), 5, (0, 0, 255), -1)
+                cv2.circle(pic, (int(good_new[3][0]), int(good_new[3][1])), 5, (255, 255, 255), -1)
+                cv2.circle(disparity2, (int(good_new[3][0]), int(good_new[3][1])), 7, (255, 255, 255), 1)
+                cv2.imshow("Disparity", disparity2)
+                
+                #print(H.dot(X)[0][0], Z[0][0])
+                #print(H.dot(X)[1][0], Z[1][0])
+                #print(H.dot(X)[2][0], Z[2][0])
+                #print()
+                X, P = update(X, P, Z, H, R)
             feat1 = good_new.reshape(-1,1,2)
         
         X, P = predict(X, P, F, u)

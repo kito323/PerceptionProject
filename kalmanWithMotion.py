@@ -156,7 +156,7 @@ I = np.array([[1, 0, 0, 0, 0, 0],
 
 state = 0
 
-for i in range(1, len(images_left)):
+for i in range(800, len(images_left)):
     
     #read in and rectify two images (U1 = left and U2 = right)
     imgU1, imgU2 = readAndRectify()
@@ -202,11 +202,15 @@ for i in range(1, len(images_left)):
             points_3D, disparity2 = to3D(grayU1, grayU2)
             cnt_mask = np.zeros_like(grayU1)
             cv2.drawContours(cnt_mask, c, 0, 255, -1)
+            
+            #remove points with 0 disparity value
+            cnt_mask[disparity2 == 0] = 0
             object_coordinates = points_3D[(cnt_mask == 255)]
             
             #removing infinite values
             coordinate_mask = np.isfinite(object_coordinates).any(axis=1)
             object_coordinates = object_coordinates[coordinate_mask] 
+            #cv2.imshow("Mask", cnt_mask)
             
             #finding the mean (centre of the object in 3D)
             measurement = np.mean(object_coordinates, axis = 0)
