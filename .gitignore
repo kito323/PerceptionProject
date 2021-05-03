@@ -4,3 +4,4 @@ data/imgs/withOcclusions/left
 data/imgs/withOcclusions/right
 data/imgs/calibration/Stereo_calibration_images
 *.ipynb_checkpoints
+sparseflow_w_features_test.py
