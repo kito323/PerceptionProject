@@ -27,11 +27,11 @@ mtx_left = np.array([[705.127,	0,	621.042],
                      [0,	0,	1]])
 
 
-images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
-images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
+#images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
+#images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
 
-#images_left = glob.glob('data/imgs//withOcclusions/left/*.png')
-#images_right = glob.glob('data/imgs//withOcclusions/right/*.png')
+images_left = glob.glob('data/imgs//withOcclusions/left/*.png')
+images_right = glob.glob('data/imgs//withOcclusions/right/*.png')
 
 map1x = np.loadtxt('data/map1x.csv', delimiter = "\t").astype("float32")
 map1y = np.loadtxt('data/map1y.csv', delimiter = "\t").astype("float32")
@@ -156,7 +156,7 @@ I = np.array([[1, 0, 0, 0, 0, 0],
 
 state = 0
 
-for i in range(800, len(images_left)):
+for i in range(1, len(images_left)):
     
     #read in and rectify two images (U1 = left and U2 = right)
     imgU1, imgU2 = readAndRectify()
@@ -172,7 +172,7 @@ for i in range(800, len(images_left)):
     
     
     #new object has been placed at the beginning of the treadmill
-    if w>0 and x+w > 600 and x+w < 1200 and state == 0:
+    if w>0 and x+w > 1200 and x+w < 1250 and state == 0: #previous 600, 1200
         state = 1
         X = np.array([[0], #x position
               [0], #x velocity
