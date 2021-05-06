@@ -61,7 +61,7 @@ def readAndRectify():
     return imgU1, imgU2
 
 def motionDetection(img):
-    fgmask = fgbg.apply(imgU1)
+    fgmask = fgbg.apply(img)
     fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
     
     cnts = cv2.findContours(fgmask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -172,7 +172,7 @@ for i in range(1, len(images_left)):
     
     
     #new object has been placed at the beginning of the treadmill
-    if w>0 and x+w > 1200 and x+w < 1250 and state == 0: #previous 600, 1200
+    if w>0 and x+w > 1230 and x+w < 1280 and state == 0: #previous 600, 1200
         state = 1
         X = np.array([[0], #x position
               [0], #x velocity
