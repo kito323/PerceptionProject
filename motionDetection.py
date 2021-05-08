@@ -81,7 +81,7 @@ def main():
         # cv2.imshow("Thresh", fgmask)
         
         
-        key = cv2.waitKey() & 0xFF
+        key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
             break
         
