@@ -12,20 +12,35 @@ import matplotlib.pyplot as plt
 import imutils
 import open3d as o3d
 import copy
-#from rectification import mtx_left, rvecs_left, tvecs_left, dist_left
+import os 
 
+from joblib import load
+from classification.utilsBOVW import *
+from classification.testBOVW import predictLabel
+
+os.environ['DISPLAY'] = ':0'
+
+#from rectification import mtx_left, rvecs_left, tvecs_left, dist_left
 dist_left = np.array([-0.32948,	0.141779,	-0.000115869,	0.000253564,	-0.0310092])
 
 mtx_left = np.array([[705.127,	0,	621.042],
-                     [0,	705.055,	370.571],
-                     [0,	0,	1]])
+                    [0,	705.055,	370.571],
+                    [0,	0,	1]])
 
+ # LOAD CLASSIFICATOR
+svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW_300_copy.pkl')
+# Create sift object
+sift = cv2.xfeatures2d.SIFT_create()
 
 #images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
 #images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
 
 images_left = glob.glob('data/imgs//withOcclusions/left/*.png')
 images_right = glob.glob('data/imgs//withOcclusions/right/*.png')
+images_left.sort()
+images_right.sort()
+assert images_right, images_left
+assert (len(images_right) == len(images_left))
 
 map1x = np.loadtxt('data/map1x.csv', delimiter = "\t").astype("float32")
 map1y = np.loadtxt('data/map1y.csv', delimiter = "\t").astype("float32")
@@ -34,9 +49,9 @@ map2x = np.loadtxt('data/map2x.csv', delimiter = "\t").astype("float32")
 map2y = np.loadtxt('data/map2y.csv', delimiter = "\t").astype("float32")
 
 Q = np.array([[1, 0, 0, -646.284], 
-              [0, 1, 0, -384.277],
-              [0, 0, 0, 703.981],
-              [0, 0, 0.00833374, -0]])
+            [0, 1, 0, -384.277],
+            [0, 0, 0, 703.981],
+            [0, 0, 0.00833374, -0]])
 
 fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows = False)
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
@@ -55,6 +70,7 @@ def readAndRectify():
     return imgU1, imgU2
 
 def motionDetection(img):
+    label = ['None']
     fgmask = fgbg.apply(img)
     fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
     fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, kernel)
@@ -66,11 +82,29 @@ def motionDetection(img):
     #Draw only the biggest contour if its size is over threshold
     if len(cnts) != 0:
         cnt = max(cnts, key = cv2.contourArea)
-        if cv2.contourArea(cnt) > 3500 and cv2.contourArea(cnt) < 100000 :
+        if cv2.contourArea(cnt) > 3500 and cv2.contourArea(cnt) < 50000:
             (x, y, w, h) = cv2.boundingRect(cnt)
             c = [cnt]
-    return x,y,w,h,c, fgmask
+            rectCenter = calculate_rect_center(x,y,w,h)
+            # print(rectCenter)
+            # Predict when the object has passed the occlusion
+            if rectCenter[0] > 390 and rectCenter[0] < 700:
+                cv2.rectangle(pic, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                img = pic[y:y+h, x:x+w]
+                label = predictLabel(img, sift, num_cluster, kmeans, svm, scaler, imgs_features)
+            # Preict when the object before the occlusion
+            elif rectCenter[0] > 1122 and 300 < rectCenter[1] and rectCenter[1] < 440:
+                cv2.rectangle(pic, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                img = pic[y:y+h, x:x+w]
+                label = predictLabel(img, sift, num_cluster, kmeans, svm, scaler, imgs_features)
 
+
+    return x,y,w,h,c,fgmask,label[0]
+
+def calculate_rect_center(x,y,w,h):
+    c_x = int(x + w/2)
+    c_y = int(y + h/2)
+    return (c_x,c_y)
 
 def getDisparityMap(grayU1, grayU2):
     stereo = cv2.StereoBM_create(numDisparities=208, blockSize=7) #208 and 7
@@ -136,7 +170,6 @@ def initializeKalman():
     
     return X, P, u, F, H, R, I
 
-
 state = 0
 
 for i in range(1, len(images_left)):
@@ -151,32 +184,32 @@ for i in range(1, len(images_left)):
     pic = copy.deepcopy(imgU1)
     
     #motion detection on left image (returns the centre and width and height of the surrounding rect)
-    x,y,w,h,c, fgmask = motionDetection(imgU1)
+    x,y,w,h,c,fgmask, label = motionDetection(imgU1)
     
     
     #waiting for object to reach the detection area 
     if state == 0:
-        if w>0 and x+w > 1200 and x+w < 1280: #change first to 1150 for unoccluded video
+        if w > 0 and x + w > 1200 and x + w < 1280: #change first to 1150 for unoccluded video
             X, P, u, F, H, R, I = initializeKalman()
             state = 1
-      
+    
     #tracking
     elif state == 1:
         
         #the right edge of the object reached a certain point -> start waiting for the new object
-        if w > 0 and x+w<700:
+        if w > 0 and x + w < 700:
             state = 0
+
             
         #if motion is found get the measurement for Kalman and do update and predict
-        elif w> 0:
+        elif w > 0:
             disparity, disparity2 = getDisparityMap(grayU1, grayU2)
             cnt_mask = np.zeros_like(grayU1)
             cv2.drawContours(cnt_mask, c, 0, 255, -1)
             
             #find the image x and y of the centre of the object 
             whiteCoordinates = np.argwhere(cnt_mask==255)
-            centreOfWhite = np.mean(whiteCoordinates, axis = 0)
-            
+            centreOfWhite = np.mean(whiteCoordinates, axis = 0)          
             
             #remove points with below 0 disparity value and find the disparity of the centre of the object
             cnt_mask[disparity <= 0] = 0
@@ -206,7 +239,8 @@ for i in range(1, len(images_left)):
         
     
     #show result
-    cv2.rectangle(pic, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    cv2.putText(pic, 'Object detected: ' + label, (10, 75), cv2.FONT_ITALIC, 0.75, (0,0,0), 2)
+    
     cv2.imshow("Video", pic)
     cv2.imshow("Motion", fgmask)
     
