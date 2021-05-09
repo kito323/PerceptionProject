@@ -9,7 +9,7 @@ from sklearn import svm, datasets
 from classification.utilsBOVW import *
 
 
-def predict(img, sift, num_clusters, kmeans, svm, scaler, imgs_features):
+def predictLabel(img, sift, num_clusters, kmeans, svm, scaler, imgs_features):
     name_dict =	{
         "0": "book",
         "1": "box",
@@ -17,7 +17,8 @@ def predict(img, sift, num_clusters, kmeans, svm, scaler, imgs_features):
     }
     # Convert to gray and resize
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img = cv2.resize(img, (256,256))
+    if img.shape[0] > 256 and img.shape[1] > 256:
+        img = cv2.resize(img, (256,256))
 
     # Get descriptors
     kp, des = sift.detectAndCompute(img, None)
@@ -30,5 +31,4 @@ def predict(img, sift, num_clusters, kmeans, svm, scaler, imgs_features):
     kernel_test = np.dot(test_features, imgs_features.T)
     # Make prediction
     prediction = [name_dict[str(int(i))] for i in svm.predict(kernel_test)]
-
     return prediction

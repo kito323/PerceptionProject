@@ -10,13 +10,14 @@ from sklearn import svm, datasets
 from joblib import load
 
 from classification.utilsBOVW import *
-from classification.testBOVW import predict
+from classification.testBOVW import predictLabel
 
 os.environ['DISPLAY'] = ':0'
 
 def main():
 
     images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
+    # images_left = glob.glob('data/imgs//withOcclusions/left/*.png')
 
     map1x = np.loadtxt('data/map1x.csv', delimiter = "\t").astype("float32")
     map1y = np.loadtxt('data/map1y.csv', delimiter = "\t").astype("float32")
@@ -25,13 +26,14 @@ def main():
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
 
     # LOAD CLASSIFICATOR
-    svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW.pkl')
+    svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW_100_mix.pkl')
     # Create sift object
     sift = cv2.xfeatures2d.SIFT_create()
 
     # define conveyor_area
-    conveyor_area = np.array([ [[388,489]], [[447,655]], [[1157,362]], [[1049, 306]] ])
-    # conveyor_area = np.array([ [388,489], [447,655], [1157,362], [1049, 306] ])
+    conveyor_area = np.array([ [[395,520]], [[447,687]], [[1279,373]], [[1127, 312]] ])
+    # define conveyor_area
+    conveyor_area = np.array([ [[393,515]], [[443,691]], [[1279,369]], [[1130, 306]] ])
 
 
     assert images_left
@@ -55,14 +57,16 @@ def main():
         #Draw only the biggest contour if its size is over threshold
         if len(cnts) != 0:
             c = max(cnts, key = cv2.contourArea)
-            if cv2.contourArea(c) > 4000:
+            if cv2.contourArea(c) > 3500:# and cv2.contourArea(c) <00:
                 (x, y, w, h) = cv2.boundingRect(c)
                 center = calculate_rect_center(x, y, w, h)
+                print(center)
 
                 if cv2.pointPolygonTest(conveyor_area, center, measureDist = False) == 1:
                     # Image to predict
                     img = imgU1[y : y+h, x : x+w]
-                    label = predict(img, sift, num_cluster, kmeans, svm, scaler, imgs_features)
+                    print(img.shape)
+                    label = predictLabel(img, sift, num_cluster, kmeans, svm, scaler, imgs_features)
                     cv2.rectangle(imgU1, (x, y), (x + w, y + h), (0, 255, 0), 2)
                     if i < 11:
                         arr_label.append(label)
@@ -78,7 +82,7 @@ def main():
 
 
         cv2.imshow("Video", imgU1)
-        # cv2.imshow("Thresh", fgmask)
+        cv2.imshow("Thresh", fgmask)
         
         
         key = cv2.waitKey(1) & 0xFF
