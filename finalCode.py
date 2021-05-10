@@ -70,7 +70,7 @@ def motionDetection(img):
     fgmask = fgbg.apply(img)
     fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
     fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, kernel)
-    #fgmask[movementMask!=255]=0
+    fgmask[movementMask!=255]=0
     
     cnts = cv2.findContours(fgmask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)

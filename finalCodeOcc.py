@@ -250,6 +250,9 @@ for i in range(1, len(images_left)):
             
             X, P = update(X, P, Z, H, R, I)
             cv2.imshow("Disparity", disparity2)
+            
+            ############################ MAYBE THE CLASSIFIER SOMEWHERE HERE IN THIS IF STATEMENT. ##################################
+            ######## w>0 is checking if object was found at all and state==1 is when object should be on conveyor belt. #############
         
         
         #if motion not found do only predict
