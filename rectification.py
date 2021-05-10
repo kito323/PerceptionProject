@@ -3,11 +3,13 @@
 Created on Sun Apr 11 16:23:45 2021
 
 @author: krist
+#https://sourishghosh.com/2016/stereo-calibration-cpp-opencv/
 """
 import numpy as np
 import cv2
 import glob
 import matplotlib.pyplot as plt
+
 
 """
 Implement the number of vertical and horizontal corners
@@ -19,6 +21,7 @@ nb_vertical = 9
 # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
 objp = np.zeros((nb_horizontal*nb_vertical,3), np.float32)
 objp[:,:2] = np.mgrid[0:nb_vertical,0:nb_horizontal].T.reshape(-1,2)
+objp = objp*33.6 #multiplying with the actual size of the checker board square
 
 # Arrays to store object points and image points from all the images.
 objpoints1 = [] 
@@ -90,10 +93,10 @@ map2x, map2y = cv2.initUndistortRectifyMap(mtx_right, distCoeffs2, R2, P2, gray.
 img_left = cv2.imread('data/imgs/calibration/Stereo_calibration_images/left-0030.png')
 img_right = cv2.imread('data/imgs/calibration/Stereo_calibration_images/right-0030.png')
 
-imgU1 = np.zeros(gray.shape, np.uint8)
+imgU1 = np.zeros(img_left.shape[:2], np.uint8)
 imgU1 = cv2.remap(img_left, map1x, map1y, cv2.INTER_LINEAR, imgU1, cv2.BORDER_CONSTANT, 0)
 
-imgU2 = np.zeros(gray.shape, np.uint8)
+imgU2 = np.zeros(img_right.shape[:2], np.uint8)
 imgU2 = cv2.remap(img_right, map2x, map2y, cv2.INTER_LINEAR, imgU2, cv2.BORDER_CONSTANT, 0)
 
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(18,18))
@@ -114,10 +117,10 @@ ax[1].set_title('After remapping right')
 img_left2 = cv2.imread('data/imgs/withoutOcclusions/left/1585434300_249202013_Left.png')
 img_right2 = cv2.imread('data/imgs/withoutOcclusions/right/1585434300_680651903_Right.png')
 
-imgU1_2 = np.zeros(gray.shape, np.uint8)
+imgU1_2 = np.zeros(img_left.shape[:2], np.uint8)
 imgU1_2 = cv2.remap(img_left2, map1x, map1y, cv2.INTER_LINEAR, imgU1_2, cv2.BORDER_CONSTANT, 0)
 
-imgU2_2 = np.zeros(gray.shape, np.uint8)
+imgU2_2 = np.zeros(img_right.shape[:2], np.uint8)
 imgU2_2 = cv2.remap(img_right2, map2x, map2y, cv2.INTER_LINEAR, imgU2_2, cv2.BORDER_CONSTANT, 0)
 
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(18,18))
@@ -128,9 +131,9 @@ ax[1].set_title('After remapping left')
 
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(18,18))
 ax[0].imshow(img_right2[...,[2,1,0]])
-ax[0].set_title('Original image right')
+#ax[0].set_title('Original image right')
 ax[1].imshow(imgU2_2[...,[2,1,0]])
-ax[1].set_title('After remapping right')
+#ax[1].set_title('After remapping right')
 
 #Rasmus (TA) R and T values to compare
 #R = np.array([[ 0.99995862, -0.00561134,  0.00716086],
