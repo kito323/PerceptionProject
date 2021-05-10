@@ -2,7 +2,6 @@
 """
 Created on Sat May  8 18:10:49 2021
 
-@author: krist
 """
 
 import numpy as np
@@ -12,7 +11,6 @@ import imutils
 import copy
 from joblib import load
 import os
-from classification.utilsBOVW import *
 from classification.testBOVW import predictLabel
 
 os.environ['DISPLAY'] = ':0'
@@ -46,13 +44,11 @@ Q = np.array([[1, 0, 0, -646.284],
 fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows = False, history = 600, varThreshold = 20)
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
 
-# LOAD CLASSIFICATOR
+#load classifier
 svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW_50.pkl')
-# Create sift object
-sift = cv2.xfeatures2d.SIFT_create()
 
-# define conveyor_area
-conveyor_area = np.array([ [[388,489]], [[447,655]], [[1157,362]], [[1049, 306]] ])
+#create sift object
+sift = cv2.xfeatures2d.SIFT_create()
 
 def readAndRectify():
     #read in 
@@ -183,7 +179,7 @@ for i in range(1, len(images_left)):
     #read in and rectify two images (U1 = left and U2 = right)
     imgU1, imgU2 = readAndRectify()
     
-    #convert both images to gray for goodfeatures and disparity
+    #convert both images to gray for disparity
     grayU1 = cv2.cvtColor(imgU1, cv2.COLOR_BGR2GRAY)
     grayU2 = cv2.cvtColor(imgU2, cv2.COLOR_BGR2GRAY)
     
@@ -196,13 +192,14 @@ for i in range(1, len(images_left)):
     
     #waiting for object to reach the detection area 
     if state == 0:
+        cv2.putText(pic, "Last object's most frequent prediction: " + label_predicted, (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
         if w>0 and x+w > 1150 and x+w < 1280:
             X, P, u, F, H, R, I = initializeKalman()
             state = 1
             # free the predictions array
             arr_label.clear()
             label_predicted = 'None'
-      
+            
     #tracking
     if state == 1:
         
@@ -247,8 +244,7 @@ for i in range(1, len(images_left)):
             img = imgU1[y : y+h, x : x+w]
             label = predictLabel(img, sift, num_cluster, kmeans, svm, scaler, imgs_features)
             arr_label.append(label)
-            cv2.putText(pic, 'Most frequent prediction: ' + label_predicted, (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
-            cv2.putText(pic, 'Current prediction: ' + label[0]  , (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
+            cv2.putText(pic, 'Current prediction: ' + label[0], (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
         
     
         #if motion not found do only predict
@@ -258,15 +254,12 @@ for i in range(1, len(images_left)):
         point_2D, _ = cv2.projectPoints(np.array([[H.dot(X)[0][0], (H.dot(X))[1][0], (H.dot(X))[2][0]]]), np.zeros(3), np.array([0., 0., 0.]), mtx_left,  np.array([0., 0., 0., 0.]))
         cv2.circle(pic, (int(point_2D[0][0][0]), int(point_2D[0][0][1])), 5, (255, 0, 0), -1)
         cv2.putText(pic, 'Predicted pos: ' +  str(round(X[0][0])) + " " + str(round(X[2][0])) + " " + str(round(X[4][0])), (10,40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2) 
-        
-    # Drawing classification
-    cv2.putText(pic, 'Current prediction: ' + label[0], (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
-    cv2.putText(pic, 'Most frequent prediction: ' + label_predicted, (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
+  
         
     #show result
     cv2.rectangle(pic, (x, y), (x + w, y + h), (0, 255, 0), 2)
     cv2.imshow("Video", pic)
-    cv2.imshow("Motion", fgmask)
+    #cv2.imshow("Motion", fgmask)
     
     key = cv2.waitKey(1) & 0xFF
     if key == ord("q"):

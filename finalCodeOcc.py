@@ -2,7 +2,6 @@
 """
 Created on Sun May  9 17:19:14 2021
 
-@author: krist
 """
 
 import numpy as np
@@ -12,7 +11,6 @@ import imutils
 import copy
 from joblib import load
 import os
-from classification.utilsBOVW import *
 from classification.testBOVW import predictLabel
 
 os.environ['DISPLAY'] = ':0'
@@ -45,14 +43,11 @@ Q = np.array([[1, 0, 0, -646.284],
 fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows = False, history = 600, varThreshold = 20)
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
 
-# LOAD CLASSIFICATOR
-#svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW.pkl')
+#load classifier
 svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW_300_copy.pkl')
-# Create sift object
-sift = cv2.xfeatures2d.SIFT_create()
 
-# define conveyor_area
-conveyor_area = np.array([ [[388,489]], [[447,655]], [[1157,362]], [[1049, 306]] ])
+#create sift object
+sift = cv2.xfeatures2d.SIFT_create()
 
 def readAndRectify():
     #read in 
@@ -183,7 +178,7 @@ for i in range(1, len(images_left)):
     #read in and rectify two images (U1 = left and U2 = right)
     imgU1, imgU2 = readAndRectify()
     
-    #convert all the 3 images to gray for goodfeatures and disparity
+    #convert both images to gray for goodfeatures and disparity
     grayU1 = cv2.cvtColor(imgU1, cv2.COLOR_BGR2GRAY)
     grayU2 = cv2.cvtColor(imgU2, cv2.COLOR_BGR2GRAY)
     
@@ -194,8 +189,7 @@ for i in range(1, len(images_left)):
         
     #waiting for object to reach the detection area 
     if state == 0:
-        cv2.putText(pic, 'Current prediction: ' + label[0], (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 1, 2)
-        cv2.putText(pic, 'Most frequent prediction: ' + label_predicted, (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 1, 2)
+        cv2.putText(pic, "Last object's most frequent prediction: " + label_predicted, (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 1, 2)
         
         if w>0 and x+w > 1200 and x+w < 1280:
             X, P, u, F, H, R, I = initializeKalman() 
@@ -205,8 +199,7 @@ for i in range(1, len(images_left)):
             arr_label.clear()
         
         else:
-            cv2.putText(pic, 'Current prediction: ' + label[0], (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0),2)
-            cv2.putText(pic, 'Most frequent prediction: ' + label_predicted, (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0),2)
+            cv2.putText(pic, "Last object's most frequent prediction: " + label_predicted, (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0),2)
             
       
     #tracking
@@ -247,18 +240,16 @@ for i in range(1, len(images_left)):
             cv2.putText(pic, 'Measured pos: ' + str(round(Z[0][0])) + " " + str(round(Z[1][0]))+ " " + str(round(Z[2][0])), (10,20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) 
             
             X, P = update(X, P, Z, H, R, I)
-            cv2.imshow("Disparity", disparity2)
+            #cv2.imshow("Disparity", disparity2)
 
             # Classification
             img = imgU1[y : y+h, x : x+w]
             label = predictLabel(img, sift, num_cluster, kmeans, svm, scaler, imgs_features)
             arr_label.append(label)
-            cv2.putText(pic, 'Most frequent prediction: ' + label_predicted, (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
             cv2.putText(pic, 'Current prediction: ' + label[0]  , (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
 
         else:
             cv2.putText(pic, 'Current prediction: ' + 'None'  , (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
-            cv2.putText(pic, 'Most frequent prediction: ' + label_predicted, (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
 
 
         #if motion not found do only predict
@@ -275,7 +266,7 @@ for i in range(1, len(images_left)):
     #show result
     cv2.rectangle(pic, (x, y), (x + w, y + h), (0, 255, 0), 2)
     cv2.imshow("Video", pic)
-    cv2.imshow("Motion", fgmask)
+    #cv2.imshow("Motion", fgmask)
     
     key = cv2.waitKey(1) & 0xFF
     if key == ord("q"):
