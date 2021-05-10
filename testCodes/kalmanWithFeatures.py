@@ -13,18 +13,18 @@ import open3d as o3d
 import copy
 
 #the unoccluded images
-images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
-images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
+images_left = glob.glob('../data/imgs//withoutOcclusions/left/*.png')
+images_right = glob.glob('../data/imgs//withoutOcclusions/right/*.png')
 
 #the occluded images
 #images_left = glob.glob('data/imgs//withOcclusions/left/*.png')
 #images_right = glob.glob('data/imgs//withOcclusions/right/*.png')
 
-map1x = np.loadtxt('data/map1x.csv', delimiter = "\t").astype("float32")
-map1y = np.loadtxt('data/map1y.csv', delimiter = "\t").astype("float32")
+map1x = np.loadtxt('../data/map1x.csv', delimiter = "\t").astype("float32")
+map1y = np.loadtxt('../data/map1y.csv', delimiter = "\t").astype("float32")
 
-map2x = np.loadtxt('data/map2x.csv', delimiter = "\t").astype("float32")
-map2y = np.loadtxt('data/map2y.csv', delimiter = "\t").astype("float32")
+map2x = np.loadtxt('../data/map2x.csv', delimiter = "\t").astype("float32")
+map2y = np.loadtxt('../data/map2y.csv', delimiter = "\t").astype("float32")
 
 
 mtx_left = np.array([[705.127,	0,	621.042],
@@ -239,7 +239,7 @@ for i in range(1, len(images_left)):
             state = 0
         elif w > 0:
             feat1, feat2, pic, good_new = featureDetection(grayU1_prev, grayU1, feat1, x, y, w, h, "draw") 
-            point_3D, disparity2 = to3D(grayU1, grayU2, good_new)
+            point_3D, disparity2 = to3D_test(grayU1, grayU2, good_new)
             
             #if we dont have a valid disparity value don't do othe measuremnt update
             if (disparity2[int(good_new[3][1])][int(good_new[3][0])] != 0):
