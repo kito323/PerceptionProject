@@ -12,7 +12,8 @@ import imutils
 import copy
 from joblib import load
 import os
-from classification.testBOVW import predict
+from classification.utilsBOVW import *
+from classification.testBOVW import predictLabel
 
 os.environ['DISPLAY'] = ':0'
 
@@ -43,7 +44,8 @@ fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows = False, history = 600, 
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
 
 # LOAD CLASSIFICATOR
-svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW.pkl')
+#svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW.pkl')
+svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW_300_copy.pkl')
 # Create sift object
 sift = cv2.xfeatures2d.SIFT_create()
 
@@ -192,7 +194,7 @@ for i in range(1, len(images_left)):
     if cv2.pointPolygonTest(conveyor_area, center, measureDist = False) == 1:
         # Image to predict
         img = imgU1[y : y+h, x : x+w]
-        label = predict(img, sift, num_cluster, kmeans, svm, scaler, imgs_features)
+        label = predictLabel(img, sift, num_cluster, kmeans, svm, scaler, imgs_features)
         if j < 11:
             arr_label.append(label)
             j += 1
@@ -220,7 +222,7 @@ for i in range(1, len(images_left)):
             state = 0
             
         #if motion is found get the measurement for Kalman and do update and predict
-        elif w> 0 and (frameCount < 7 or x < 600):
+        elif w> 0 and (frameCount < 8 or x < 600):
             
             disparity, disparity2 = getDisparityMap(grayU1, grayU2)
             cnt_mask = np.zeros_like(grayU1)
@@ -244,10 +246,10 @@ for i in range(1, len(images_left)):
             #drawing the measurement
             measurement_2D, _ = cv2.projectPoints(np.array([[Z[0][0], Z[1][0], Z[2][0]]]), np.zeros(3), np.array([0., 0., 0.]), mtx_left, np.array([0., 0., 0., 0.]))
             cv2.circle(pic, (int(measurement_2D[0][0][0]), int(measurement_2D[0][0][1])), 5, (0, 0, 255), -1)
-            #cv2.putText(pic, str(round(Z[0][0])) + " " + str(round(Z[1][0]))+ " " + str(round(Z[2][0])), (10,20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) 
+            cv2.putText(pic, str(round(Z[0][0])) + " " + str(round(Z[1][0]))+ " " + str(round(Z[2][0])), (10,20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) 
             
             X, P = update(X, P, Z, H, R, I)
-            #cv2.imshow("Disparity", disparity2)
+            cv2.imshow("Disparity", disparity2)
         
         
         #if motion not found do only predict
@@ -257,7 +259,7 @@ for i in range(1, len(images_left)):
         point_2D, _ = cv2.projectPoints(np.array([[H.dot(X)[0][0], (H.dot(X))[1][0], (H.dot(X))[2][0]]]), np.zeros(3), np.array([0., 0., 0.]), mtx_left,  np.array([0., 0., 0., 0.]))
         
         cv2.circle(pic, (int(point_2D[0][0][0]), int(point_2D[0][0][1])), 5, (255, 0, 0), -1)
-        #cv2.putText(pic, str(round(X[0][0])) + " " + str(round(X[2][0])) + " " + str(round(X[4][0])), (10,40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2) 
+        cv2.putText(pic, str(round(X[0][0])) + " " + str(round(X[2][0])) + " " + str(round(X[4][0])), (10,40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2) 
         
         frameCount += 1
         

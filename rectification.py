@@ -93,10 +93,10 @@ map2x, map2y = cv2.initUndistortRectifyMap(mtx_right, distCoeffs2, R2, P2, gray.
 img_left = cv2.imread('data/imgs/calibration/Stereo_calibration_images/left-0030.png')
 img_right = cv2.imread('data/imgs/calibration/Stereo_calibration_images/right-0030.png')
 
-imgU1 = np.zeros(gray.shape, np.uint8)
+imgU1 = np.zeros(img_left.shape[:2], np.uint8)
 imgU1 = cv2.remap(img_left, map1x, map1y, cv2.INTER_LINEAR, imgU1, cv2.BORDER_CONSTANT, 0)
 
-imgU2 = np.zeros(gray.shape, np.uint8)
+imgU2 = np.zeros(img_right.shape[:2], np.uint8)
 imgU2 = cv2.remap(img_right, map2x, map2y, cv2.INTER_LINEAR, imgU2, cv2.BORDER_CONSTANT, 0)
 
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(18,18))
@@ -117,10 +117,10 @@ ax[1].set_title('After remapping right')
 img_left2 = cv2.imread('data/imgs/withoutOcclusions/left/1585434300_249202013_Left.png')
 img_right2 = cv2.imread('data/imgs/withoutOcclusions/right/1585434300_680651903_Right.png')
 
-imgU1_2 = np.zeros(gray.shape, np.uint8)
+imgU1_2 = np.zeros(img_left.shape[:2], np.uint8)
 imgU1_2 = cv2.remap(img_left2, map1x, map1y, cv2.INTER_LINEAR, imgU1_2, cv2.BORDER_CONSTANT, 0)
 
-imgU2_2 = np.zeros(gray.shape, np.uint8)
+imgU2_2 = np.zeros(img_right.shape[:2], np.uint8)
 imgU2_2 = cv2.remap(img_right2, map2x, map2y, cv2.INTER_LINEAR, imgU2_2, cv2.BORDER_CONSTANT, 0)
 
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(18,18))
@@ -131,9 +131,9 @@ ax[1].set_title('After remapping left')
 
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(18,18))
 ax[0].imshow(img_right2[...,[2,1,0]])
-ax[0].set_title('Original image right')
+#ax[0].set_title('Original image right')
 ax[1].imshow(imgU2_2[...,[2,1,0]])
-ax[1].set_title('After remapping right')
+#ax[1].set_title('After remapping right')
 
 #Rasmus (TA) R and T values to compare
 #R = np.array([[ 0.99995862, -0.00561134,  0.00716086],

@@ -22,13 +22,13 @@ images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
 img1 = cv2.imread(images_left[800], 0)
 img2 = cv2.imread(images_right[800], 0)
 
-imgU1 = np.zeros(img1.shape[:2], np.uint8)
-imgU1 = cv2.remap(img1, map1x, map1y, cv2.INTER_LINEAR, imgU1, cv2.BORDER_CONSTANT, 0)
-img1 = imgU1
+#imgU1 = np.zeros(img1.shape[:2], np.uint8)
+#imgU1 = cv2.remap(img1, map1x, map1y, cv2.INTER_LINEAR, imgU1, cv2.BORDER_CONSTANT, 0)
+#img1 = imgU1
 
-imgU2 = np.zeros(img2.shape[:2], np.uint8)
-imgU2 = cv2.remap(img2, map1x, map1y, cv2.INTER_LINEAR, imgU1, cv2.BORDER_CONSTANT, 0)
-img2=imgU2
+#imgU2 = np.zeros(img2.shape[:2], np.uint8)
+#imgU2 = cv2.remap(img2, map1x, map1y, cv2.INTER_LINEAR, imgU1, cv2.BORDER_CONSTANT, 0)
+#img2=imgU2
 
 #%%
 
