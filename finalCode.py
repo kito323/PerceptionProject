@@ -27,6 +27,8 @@ mtx_left = np.array([[705.127,	0,	621.042],
 
 images_left = glob.glob('data/imgs//withoutOcclusions/left/*.png')
 images_right = glob.glob('data/imgs//withoutOcclusions/right/*.png')
+images_left.sort()
+images_right.sort()
 
 map1x = np.loadtxt('data/map1x.csv', delimiter = "\t").astype("float32")
 map1y = np.loadtxt('data/map1y.csv', delimiter = "\t").astype("float32")
@@ -45,8 +47,7 @@ fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows = False, history = 600, 
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
 
 # LOAD CLASSIFICATOR
-#svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW.pkl')
-svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW_300_copy.pkl')
+svm, kmeans, scaler, num_cluster, imgs_features = load('classification/BOVW_50.pkl')
 # Create sift object
 sift = cv2.xfeatures2d.SIFT_create()
 
@@ -70,7 +71,7 @@ def motionDetection(img):
     fgmask = fgbg.apply(img)
     fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
     fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, kernel)
-    #fgmask[movementMask!=255]=0
+    fgmask[movementMask!=255]=0
     
     cnts = cv2.findContours(fgmask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
@@ -157,11 +158,11 @@ def max_occurences(array):
     count_mug = array.count(['mug'])
     value = [count_book, count_box, count_mug]
     if value.index(max(value)) == 0:
-        return 'Book'
+        return 'book'
     elif value.index(max(value)) == 1:
-        return 'Box'
+        return 'box'
     else:
-        return 'Mug'
+        return 'mug'
 
 
 # find if the rectangular contour is inside the area depicted by the conveyor
@@ -174,7 +175,8 @@ def calculate_rect_center(x,y,w,h):
 state = 0
 j = 0
 arr_label = []
-found = False
+label_predicted = 'None'
+label = ['None']
 
 for i in range(1, len(images_left)):
     
@@ -190,31 +192,16 @@ for i in range(1, len(images_left)):
     
     #motion detection on left image (returns the centre and width and height of the surrounding rect)
     x,y,w,h,c,fgmask = motionDetection(imgU1)
-
-    #Classification
-    center = calculate_rect_center(x, y, w, h)
-    if cv2.pointPolygonTest(conveyor_area, center, measureDist = False) == 1:
-        # Image to predict
-        img = imgU1[y : y+h, x : x+w]
-        label = predictLabel(img, sift, num_cluster, kmeans, svm, scaler, imgs_features)
-        if j < 11:
-            arr_label.append(label)
-            j += 1
-        elif j == 11:
-            text = max_occurences(arr_label) 
-            cv2.putText(pic, text, (x, y - 20), cv2.FONT_ITALIC, 0.75, (0,0,255), 1, cv2.LINE_AA)
-            j = 0
-            arr_label.clear()
-            found = True
-        if found:
-            cv2.putText(pic, text, (x, y - 20), cv2.FONT_ITALIC, 0.75, (0,0,255), 1, cv2.LINE_AA)
-            
+          
     
     #waiting for object to reach the detection area 
     if state == 0:
         if w>0 and x+w > 1150 and x+w < 1280:
             X, P, u, F, H, R, I = initializeKalman()
             state = 1
+            # free the predictions array
+            arr_label.clear()
+            label_predicted = 'None'
       
     #tracking
     if state == 1:
@@ -222,6 +209,9 @@ for i in range(1, len(images_left)):
         #the right edge of the object reached a certain point -> start waiting for the new object
         if w > 0 and x+w<700:
             state = 0
+            # find most frequent prediction and restore current
+            label = ['None']
+            label_predicted = max_occurences(arr_label)
             
         #if motion is found get the measurement for Kalman and do update and predict
         elif w> 0:
@@ -247,11 +237,18 @@ for i in range(1, len(images_left)):
             #drawing the measurement
             measurement_2D, _ = cv2.projectPoints(np.array([[Z[0][0], Z[1][0], Z[2][0]]]), np.zeros(3), np.array([0., 0., 0.]), mtx_left, np.array([0., 0., 0., 0.]))
             cv2.circle(pic, (int(measurement_2D[0][0][0]), int(measurement_2D[0][0][1])), 5, (0, 0, 255), -1)
-            cv2.putText(pic, str(round(Z[0][0])) + " " + str(round(Z[1][0]))+ " " + str(round(Z[2][0])), (10,20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) 
+            cv2.putText(pic, 'Measured pos: ' +  str(round(Z[0][0])) + " " + str(round(Z[1][0]))+ " " + str(round(Z[2][0])), (10,20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) 
             
             
             X, P = update(X, P, Z, H, R, I)
             #cv2.imshow("Disparity", disparity2)
+
+            # Classification
+            img = imgU1[y : y+h, x : x+w]
+            label = predictLabel(img, sift, num_cluster, kmeans, svm, scaler, imgs_features)
+            arr_label.append(label)
+            cv2.putText(pic, 'Most frequent prediction: ' + label_predicted, (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
+            cv2.putText(pic, 'Current prediction: ' + label[0]  , (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
         
     
         #if motion not found do only predict
@@ -260,8 +257,11 @@ for i in range(1, len(images_left)):
         #drawing the prediction
         point_2D, _ = cv2.projectPoints(np.array([[H.dot(X)[0][0], (H.dot(X))[1][0], (H.dot(X))[2][0]]]), np.zeros(3), np.array([0., 0., 0.]), mtx_left,  np.array([0., 0., 0., 0.]))
         cv2.circle(pic, (int(point_2D[0][0][0]), int(point_2D[0][0][1])), 5, (255, 0, 0), -1)
-        cv2.putText(pic, str(round(X[0][0])) + " " + str(round(X[2][0])) + " " + str(round(X[4][0])), (10,40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2) 
+        cv2.putText(pic, 'Predicted pos: ' +  str(round(X[0][0])) + " " + str(round(X[2][0])) + " " + str(round(X[4][0])), (10,40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2) 
         
+    # Drawing classification
+    cv2.putText(pic, 'Current prediction: ' + label[0], (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
+    cv2.putText(pic, 'Most frequent prediction: ' + label_predicted, (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,0), 2)
         
     #show result
     cv2.rectangle(pic, (x, y), (x + w, y + h), (0, 255, 0), 2)
